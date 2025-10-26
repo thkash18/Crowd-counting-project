@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crowd Counter AI - Real-time Crowd Analysis</title>
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <!-- Load Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Use Inter font */
+        html { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        @supports (font-variation-settings: normal) {
+            html { font-family: 'Inter var', sans-serif; }
+        }
+
+        /* --- Custom Loader Animation --- */
+        .scan-loader-container {
+            width: 100px; /* Adjust size as needed */
+            height: 80px;
+            position: relative;
+            overflow: hidden; /* Hide lines outside the box */
+        }
+        .scan-loader-box {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #9ca3af; /* gray-400 */
+            border-radius: 4px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .scan-loader-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 5px #3b82f6, 0 0 10px #3b82f6;
+            border-radius: 2px;
+            animation: scan 2.5s linear infinite;
+        }
+        /* Stagger animation slightly */
+        .scan-loader-line:nth-child(2) { animation-delay: 0.2s; height: 2px; opacity: 0.8;}
+        .scan-loader-line:nth-child(3) { animation-delay: 0.4s; height: 1px; opacity: 0.6;}
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: calc(100% - 3px); } /* Adjust based on line height */
+            100% { top: 0; }
+        }
+        /* --- End Custom Loader --- */
+
+        /* Style file input button */
+        input[type="file"]::file-selector-button { /* Standard */
+             background-color: #3b82f6;
+             color: white;
+             padding: 0.5rem 1rem;
+             border: none;
+             border-radius: 0.375rem; /* rounded-md */
+             cursor: pointer;
+             font-weight: 600;
+             transition: background-color 0.2s ease-in-out;
+             margin-right: 1rem;
+        }
+        input[type="file"]::file-selector-button:hover {
+             background-color: #2563eb;
+        }
+        /* Hide default webkit button styling if needed */
+        input[type="file"]::-webkit-file-upload-button {
+             -webkit-appearance: none;
+             appearance: none;
+             /* Apply same styles as standard */
+             background-color: #3b82f6;
+             color: white;
+             padding: 0.5rem 1rem;
+             border: none;
+             border-radius: 0.375rem;
+             cursor: pointer;
+             font-weight: 600;
+             transition: background-color 0.2s ease-in-out;
+             margin-right: 1rem;
+        }
+         input[type="file"]::-webkit-file-upload-button:hover {
+             background-color: #2563eb;
+        }
+
+        /* Hero section background - UPDATED URL */
+        .hero-bg {
+             /* Gradient overlay + Local image served by Flask from 'static' folder */
+             background-image: linear-gradient(rgba(20, 30, 50, 0.6), rgba(20, 30, 50, 0.6)), url('/static/gettyimages-495692241-612x612.jpg');
+             background-size: cover;
+             background-position: center;
+        }
+        /* Style for active mode button */
+        .mode-button-active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .mode-button-inactive {
+             background-color: #e5e7eb; /* gray-200 */
+             color: #374151; /* gray-700 */
+        }
+         .mode-button-inactive:hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header / Hero Section -->
+    <header class="hero-bg text-white py-24 px-4 text-center mb-16 shadow-lg">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight leading-tight">Real-time Crowd Analysis</h1>
+            <p class="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto">Leveraging AI to monitor crowd density, count individuals, and enhance public safety & efficiency.</p>
+            <a href="#analyzer" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 inline-flex items-center text-lg shadow-md hover:shadow-lg">
+                <i data-lucide="activity" class="mr-2 h-5 w-5"></i>
+                Start Analyzing
+            </a>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section class="max-w-5xl mx-auto mb-20 px-4">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">System Capabilities</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300">
+                <div class="bg-blue-100 rounded-full p-4 inline-block mb-4">
+                    <i data-lucide="users-2" class="h-10 w-10 text-blue-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-900">Accurate Counting</h3>
+                <p class="text-gray-600">Precise AI-driven estimations of people within designated areas.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg hover:border-green-200 transition-all duration-300">
+                 <div class="bg-green-100 rounded-full p-4 inline-block mb-4">
+                    <i data-lucide="map-pin" class="h-10 w-10 text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-900">Density Visualization</h3>
+                <p class="text-gray-600">Intuitive heatmaps reveal crowd distribution and identify congestion points.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-100 hover:shadow-lg hover:border-red-200 transition-all duration-300">
+                 <div class="bg-red-100 rounded-full p-4 inline-block mb-4">
+                    <i data-lucide="siren" class="h-10 w-10 text-red-600"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-900">Safety Alerts</h3>
+                <p class="text-gray-600">Configurable thresholds trigger automatic alerts for overcrowding risks.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Analyzer Section Wrapper -->
+    <div id="analyzer" class="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-8 mb-16">
+        <!-- Mode Selection Buttons -->
+        <div class="mb-8 flex justify-center space-x-4 border-b pb-4">
+            <button id="modeBtnImage" class="mode-button mode-button-active py-2 px-6 rounded-md font-semibold transition duration-200 flex items-center">
+                <i data-lucide="image" class="h-5 w-5 mr-2"></i> Image Analyzer
+            </button>
+            <button id="modeBtnVideo" class="mode-button mode-button-inactive py-2 px-6 rounded-md font-semibold transition duration-200 flex items-center">
+                <i data-lucide="video" class="h-5 w-5 mr-2"></i> Video Analyzer
+            </button>
+            <button id="modeBtnWebcam" class="mode-button mode-button-inactive py-2 px-6 rounded-md font-semibold transition duration-200 flex items-center">
+                <i data-lucide="camera" class="h-5 w-5 mr-2"></i> Webcam Feed
+            </button>
+        </div>
+
+        <!-- Image Analyzer Section (Visible by default) -->
+        <main id="imageAnalyzerSection" class="">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-8">Image Analyzer</h2>
+            <!-- File Upload Section -->
+            <section class="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:border-blue-400 transition-colors">
+                <label for="imageUpload" class="block text-lg font-medium text-gray-700 mb-3 cursor-pointer">
+                    <i data-lucide="image-plus" class="mx-auto h-12 w-12 text-gray-400 mb-2"></i>
+                    Click to Upload or Drag & Drop Image
+                </label>
+                <input type="file" id="imageUpload" accept="image/png, image/jpeg, image/bmp" class="block w-full text-sm text-gray-500 cursor-pointer focus:outline-none file:py-2 file:px-4">
+                <p class="mt-2 text-xs text-gray-500">Supports PNG, JPG, BMP. Max file size: 10MB.</p>
+            </section>
+            <!-- Image Results (Shared structure, content updated by JS) -->
+             <section id="imageResultsSection" class="hidden mt-10">
+                 <!-- Loading/Error Indicators -->
+                <div id="imageLoadingIndicator" class="flex flex-col justify-center items-center my-6 hidden">
+                    <!-- New Scanner Loader -->
+                    <div class="scan-loader-container mb-4">
+                        <div class="scan-loader-box"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                    </div>
+                    <p class="text-gray-600 text-lg">Analyzing image, please wait...</p>
+                </div>
+                <div id="imageErrorDisplay" class="my-4 p-4 bg-red-100 text-red-700 rounded-lg shadow hidden">
+                    <p class="font-semibold flex items-center"><i data-lucide="alert-circle" class="h-5 w-5 mr-2"></i>Error:</p>
+                    <p id="imageErrorMessage" class="mt-1 text-sm"></p>
+                </div>
+                 <!-- Image and Count Display -->
+                <div id="imageOutputContent" class="hidden">
+                     <h2 class="text-2xl font-bold text-center text-gray-800 mb-8">Analysis Results</h2>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start mb-8">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-gray-700 flex items-center"><i data-lucide="image" class="h-5 w-5 mr-2 text-gray-500"></i>Original Image</h3>
+                            <img id="originalImage" src="https://placehold.co/600x400/eeeeee/cccccc?text=Original+Image" alt="Original Upload" class="rounded-lg shadow-md w-full object-contain max-h-96 border border-gray-200">
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-gray-700 flex items-center"><i data-lucide="thermometer-sun" class="h-5 w-5 mr-2 text-orange-500"></i>Density Heatmap</h3>
+                            <img id="heatmapImage" src="https://placehold.co/600x400/eeeeee/cccccc?text=Density+Map" alt="Density Heatmap" class="rounded-lg shadow-md w-full object-contain max-h-96 border border-gray-200">
+                        </div>
+                    </div>
+                     <div class="text-center mt-6">
+                         <div class="bg-gradient-to-r from-blue-100 to-indigo-100 inline-block p-6 rounded-lg shadow-lg border border-blue-200">
+                             <p class="text-xl font-semibold text-indigo-800 mb-1">Predicted Crowd Count:</p>
+                             <p id="predictedCount" class="text-5xl font-extrabold text-indigo-600 tracking-tight">--</p>
+                         </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Video Analyzer Section (Initially Hidden) -->
+        <main id="videoAnalyzerSection" class="hidden">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-8">Video Analyzer</h2>
+            <section class="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:border-blue-400 transition-colors">
+                 <label for="videoUpload" class="block text-lg font-medium text-gray-700 mb-3 cursor-pointer">
+                    <i data-lucide="video" class="mx-auto h-12 w-12 text-gray-400 mb-2"></i>
+                    Click to Upload or Drag & Drop Video
+                </label>
+                <input type="file" id="videoUpload" accept="video/mp4, video/avi, video/mov, video/mkv" class="block w-full text-sm text-gray-500 cursor-pointer focus:outline-none file:py-2 file:px-4">
+                <p class="mt-2 text-xs text-gray-500">Supports MP4, AVI, MOV, MKV. Processing can be slow.</p>
+                <!-- Frame Skip Input for Video -->
+                <div class="mt-4 text-sm text-gray-600">
+                    <label for="frameSkipInput">Process every Nth frame:</label>
+                    <input type="number" id="frameSkipInput" min="1" max="100" value="5" class="w-16 ml-2 p-1 border rounded text-center">
+                </div>
+            </section>
+            <!-- Placeholder for video results -->
+            <div id="videoResultsSection" class="hidden mt-10 text-center">
+                <div id="videoLoadingIndicator" class="flex flex-col justify-center items-center my-6 hidden">
+                     <!-- New Scanner Loader -->
+                     <div class="scan-loader-container mb-4">
+                        <div class="scan-loader-box"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                    </div>
+                    <p class="text-gray-600 text-lg">Processing video, please wait...</p>
+                </div>
+                <div id="videoErrorDisplay" class="my-4 p-4 bg-red-100 text-red-700 rounded-lg shadow hidden">
+                    <p class="font-semibold flex items-center"><i data-lucide="alert-circle" class="h-5 w-5 mr-2"></i>Error:</p>
+                    <p id="videoErrorMessage" class="mt-1 text-sm"></p>
+                </div>
+                <div id="videoOutputContent" class="hidden">
+                    <h3 class="text-xl font-semibold mb-4">Crowd Count Over Time</h3>
+                    <!-- Chart.js Canvas -->
+                    <div class="max-w-3xl mx-auto bg-white p-4 rounded shadow">
+                       <canvas id="countChart"></canvas>
+                    </div>
+                    <p id="videoAvgCount" class="mt-4 font-semibold text-lg"></p>
+                </div>
+                 <!-- Initial placeholder text -->
+                 <p id="videoPlaceholderText" class="text-gray-500 italic">Video processing results and graph will appear here.</p>
+            </div>
+        </main>
+
+        <!-- Webcam Feed Section (Initially Hidden) -->
+        <main id="webcamAnalyzerSection" class="hidden">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-8">Live Webcam Feed</h2>
+            <section class="text-center">
+                 <div class="mb-6 flex justify-center space-x-4">
+                    <button id="startWebcamBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded inline-flex items-center">
+                        <i data-lucide="play" class="h-5 w-5 mr-1"></i> Start Webcam
+                    </button>
+                    <button id="stopWebcamBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded inline-flex items-center" disabled>
+                        <i data-lucide="stop-circle" class="h-5 w-5 mr-1"></i> Stop Webcam
+                    </button>
+                 </div>
+                 <div id="webcamLoadingIndicator" class="flex flex-col justify-center items-center my-6 hidden">
+                     <!-- New Scanner Loader -->
+                    <div class="scan-loader-container mb-4">
+                        <div class="scan-loader-box"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                        <div class="scan-loader-line"></div>
+                    </div>
+                    <p class="text-gray-600 text-lg">Connecting to webcam...</p>
+                </div>
+                 <div id="webcamErrorDisplay" class="my-4 p-4 bg-red-100 text-red-700 rounded-lg shadow hidden max-w-lg mx-auto">
+                    <p class="font-semibold flex items-center"><i data-lucide="alert-circle" class="h-5 w-5 mr-2"></i>Error:</p>
+                    <p id="webcamErrorMessage" class="mt-1 text-sm"></p>
+                </div>
+
+                <!-- Video element for live feed -->
+                <video id="webcamVideoFeed" autoplay playsinline muted class="hidden w-full max-w-lg mx-auto border rounded-lg bg-gray-900 mb-4 shadow"></video> <!-- Added muted -->
+                <!-- Canvas for capturing frames -->
+                 <canvas id="webcamCanvas" class="hidden"></canvas>
+                 <!-- Image element to display processed feed -->
+                 <img id="webcamProcessedFeed" src="https://placehold.co/640x480/2d3748/a0aec0?text=Webcam+Off" alt="Webcam Feed" class="w-full max-w-lg mx-auto border rounded-lg bg-gray-900 mb-4 shadow">
+
+                 <div id="webcamCountDisplay" class="text-center mt-2 hidden">
+                     <div class="bg-gradient-to-r from-blue-100 to-indigo-100 inline-block p-4 rounded-lg shadow border border-blue-200">
+                         <p class="text-lg font-semibold text-indigo-800 mb-1">Live Crowd Count:</p>
+                         <p id="webcamCount" class="text-4xl font-bold text-indigo-600">--</p>
+                     </div>
+                 </div>
+            </section>
+        </main>
+
+    </div> <!-- End Analyzer Wrapper -->
+
+
+    <!-- Footer -->
+    <footer class="text-center mt-10 mb-6 text-gray-500 text-sm">
+        <p>&copy; 2025 Crowd Counter AI. Advanced AI Solutions.</p>
+    </footer>
+
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- COMPLETE JAVASCRIPT LOGIC -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // --- DOM Element References ---
+        const modeButtons = document.querySelectorAll('.mode-button');
+        const imageAnalyzerSection = document.getElementById('imageAnalyzerSection');
+        const videoAnalyzerSection = document.getElementById('videoAnalyzerSection');
+        const webcamAnalyzerSection = document.getElementById('webcamAnalyzerSection');
+
+        // Image Elements
+        const imageUpload = document.getElementById('imageUpload');
+        const imageResultsSection = document.getElementById('imageResultsSection');
+        const imageLoadingIndicator = document.getElementById('imageLoadingIndicator');
+        const imageErrorDisplay = document.getElementById('imageErrorDisplay');
+        const imageErrorMessage = document.getElementById('imageErrorMessage');
+        const imageOutputContent = document.getElementById('imageOutputContent');
+        const originalImage = document.getElementById('originalImage');
+        const heatmapImage = document.getElementById('heatmapImage');
+        const predictedCount = document.getElementById('predictedCount');
+
+        // Video Elements
+        const videoUpload = document.getElementById('videoUpload');
+        const videoResultsSection = document.getElementById('videoResultsSection');
+        const videoLoadingIndicator = document.getElementById('videoLoadingIndicator');
+        const videoErrorDisplay = document.getElementById('videoErrorDisplay');
+        const videoErrorMessage = document.getElementById('videoErrorMessage');
+        const videoOutputContent = document.getElementById('videoOutputContent');
+        const videoPlaceholderText = document.getElementById('videoPlaceholderText');
+        const videoAvgCount = document.getElementById('videoAvgCount');
+        const frameSkipInput = document.getElementById('frameSkipInput');
+        const countChartCanvas = document.getElementById('countChart').getContext('2d');
+        let countChart = null; // Chart.js instance
+
+         // Webcam Elements
+        const startWebcamBtn = document.getElementById('startWebcamBtn');
+        const stopWebcamBtn = document.getElementById('stopWebcamBtn');
+        const webcamVideoFeed = document.getElementById('webcamVideoFeed'); // <video> element
+        const webcamCanvas = document.getElementById('webcamCanvas');      // Hidden <canvas>
+        const webcamProcessedFeed = document.getElementById('webcamProcessedFeed'); // <img> element
+        const webcamCount = document.getElementById('webcamCount');
+        const webcamLoadingIndicator = document.getElementById('webcamLoadingIndicator');
+        const webcamErrorDisplay = document.getElementById('webcamErrorDisplay');
+        const webcamErrorMessage = document.getElementById('webcamErrorMessage');
+        const webcamCountDisplay = document.getElementById('webcamCountDisplay');
+        let webcamStream = null; // To hold the MediaStream object
+        let webcamProcessingInterval = null; // To hold the setInterval ID
+
+        // --- Configuration ---
+        const API_ENDPOINT_IMAGE = '/predict_image';
+        const API_ENDPOINT_VIDEO = '/predict_video';
+        const API_ENDPOINT_WEBCAM = '/predict_webcam';
+        const WEBCAM_INTERVAL_MS = 300; // Increase frequency for smoother feel (adjust based on performance)
+
+        // --- Mode Switching ---
+        function setActiveMode(activeModeId) {
+            stopWebcamFeed(); // Stop webcam if running when switching modes
+
+            // Hide all main sections
+            [imageAnalyzerSection, videoAnalyzerSection, webcamAnalyzerSection].forEach(sec => sec.classList.add('hidden'));
+
+            // Reset all buttons to inactive style
+            modeButtons.forEach(button => {
+                button.classList.remove('mode-button-active', 'shadow-md');
+                button.classList.add('mode-button-inactive');
+            });
+
+            // Activate the selected section and button
+            const activate = (sectionId, buttonId) => {
+                document.getElementById(sectionId).classList.remove('hidden');
+                const btn = document.getElementById(buttonId);
+                btn.classList.add('mode-button-active', 'shadow-md');
+                btn.classList.remove('mode-button-inactive');
+            };
+
+            if (activeModeId === 'modeBtnImage') activate('imageAnalyzerSection', 'modeBtnImage');
+            else if (activeModeId === 'modeBtnVideo') activate('videoAnalyzerSection', 'modeBtnVideo');
+            else if (activeModeId === 'modeBtnWebcam') activate('webcamAnalyzerSection', 'modeBtnWebcam');
+        }
+
+        modeButtons.forEach(button => {
+            button.addEventListener('click', () => setActiveMode(button.id));
+        });
+
+        // --- Image Analysis ---
+        imageUpload.addEventListener('change', handleImageUpload);
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) { // 10 MB limit
+                 alert("File is too large. Please upload an image under 10MB.");
+                 imageUpload.value = ''; // Reset file input
+                 return;
+            }
+
+            // Reset UI
+            imageResultsSection.classList.remove('hidden');
+            imageOutputContent.classList.add('hidden');
+            imageLoadingIndicator.classList.remove('hidden');
+            imageErrorDisplay.classList.add('hidden');
+            heatmapImage.src = "https://placehold.co/600x400/e0e7ff/a5b4fc?text=Analyzing...";
+            predictedCount.textContent = '--';
+
+            // Display original image preview
+            const reader = new FileReader();
+            reader.onload = (e) => originalImage.src = e.target.result;
+            reader.readAsDataURL(file);
+
+            // Prepare data and send to backend
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(API_ENDPOINT_IMAGE, { method: 'POST', body: formData });
+
+                if (!response.ok) { // Check for HTTP errors (4xx, 5xx)
+                    let errorMsg = `Server error ${response.status}. Please check backend logs or try again later.`;
+                    try {
+                        // Try to get more specific error from JSON response body
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                    } catch (e) { /* Ignore if response is not JSON */ }
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json(); // Parse JSON response
+
+                if (data.error) { // Check for application-level error in JSON
+                    throw new Error(data.error);
+                }
+
+                // Update UI with successful results
+                predictedCount.textContent = data.count !== undefined ? data.count.toFixed(2) : 'N/A';
+                heatmapImage.src = data.heatmap_base64 || "https://placehold.co/600x400/fecaca/f87171?text=Heatmap+Error";
+                imageOutputContent.classList.remove('hidden'); // Show results section
+
+            } catch (error) { // Catch network errors or errors thrown above
+                console.error('Image analysis error:', error);
+                imageErrorMessage.textContent = error.message || 'An unexpected network or server error occurred.';
+                imageErrorDisplay.classList.remove('hidden');
+                imageOutputContent.classList.add('hidden'); // Ensure results remain hidden
+                heatmapImage.src = "https://placehold.co/600x400/fecaca/f87171?text=Analysis+Failed";
+            } finally {
+                imageLoadingIndicator.classList.add('hidden'); // Always hide loader
+            }
+        }
+
+        // --- Video Analysis ---
+        videoUpload.addEventListener('change', handleVideoUpload);
+        async function handleVideoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Reset Video UI elements
+            videoResultsSection.classList.remove('hidden');
+            videoOutputContent.classList.add('hidden'); // Hide results/chart initially
+            videoLoadingIndicator.classList.remove('hidden'); // Show loader
+            videoErrorDisplay.classList.add('hidden'); // Hide error
+            videoPlaceholderText.classList.add('hidden'); // Hide initial placeholder text
+            videoAvgCount.textContent = ""; // Clear previous average
+            if (countChart) { // Destroy previous chart if it exists
+                countChart.destroy();
+                countChart = null;
+            }
+
+            // Prepare form data including the video file and frame skip value
+            const formData = new FormData();
+            formData.append('video', file);
+            formData.append('frame_skip', frameSkipInput.value || '5'); // Send frame skip, default 5
+
+            try {
+                // Send video file to the backend endpoint
+                const response = await fetch(API_ENDPOINT_VIDEO, { method: 'POST', body: formData });
+
+                if (!response.ok) { // Check for HTTP errors
+                    let errorMsg = `Server error ${response.status} while processing video.`;
+                    try { errorMsg = (await response.json()).error || errorMsg; } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json(); // Parse JSON response from backend
+
+                if (data.error) { // Check for backend application error
+                    throw new Error(data.error);
+                }
+
+                if (!data.frame_counts || data.frame_counts.length === 0) {
+                    throw new Error("Processing complete, but no frame count data was returned.");
+                }
+
+                // --- Chart.js Graph Creation ---
+                const frameNumbers = data.frame_counts.map(item => item[0]); // X-axis: Frame numbers
+                const counts = data.frame_counts.map(item => item[1]); // Y-axis: Counts
+
+                // Create the line chart using Chart.js
+                countChart = new Chart(countChartCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: frameNumbers.map(f => `Frame ${f}`), // Labels for X-axis tooltips
+                        datasets: [{
+                            label: 'Crowd Count',
+                            data: counts,
+                            borderColor: 'rgb(59, 130, 246)', // Tailwind blue-500
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.1, // Slight curve to the line
+                            fill: true, // Fill area below line
+                            pointRadius: 2, // Smaller points on the line
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true, // Allow chart to resize reasonably
+                        scales: {
+                            x: { title: { display: true, text: 'Frame Number' } },
+                            y: { beginAtZero: true, title: { display: true, text: 'Predicted Count' } }
+                        },
+                        plugins: {
+                            legend: { display: false }, // Hide dataset label legend
+                            tooltip: {
+                                callbacks: { label: (context) => `Count: ${context.parsed.y.toFixed(2)}` } // Custom tooltip
+                            }
+                        },
+                        animation: { duration: 500 } // Add a short animation
+                    }
+                });
+
+                // Calculate and display the average count
+                const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+                videoAvgCount.textContent = `Average Count (over ${counts.length} processed frames): ${avg.toFixed(2)}`;
+                videoOutputContent.classList.remove('hidden'); // Show the chart and average count
+
+            } catch (error) { // Catch network or backend errors
+                console.error('Video analysis error:', error);
+                videoErrorMessage.textContent = error.message || 'An unexpected error occurred during video processing.';
+                videoErrorDisplay.classList.remove('hidden'); // Show error message
+                videoOutputContent.classList.add('hidden'); // Hide results area
+                videoPlaceholderText.classList.remove('hidden'); // Show placeholder text again
+            } finally {
+                videoLoadingIndicator.classList.add('hidden'); // Always hide loader when done/error
+            }
+        }
+
+       // --- Webcam Analysis ---
+        async function startWebcamFeed() {
+            stopWebcamFeed(); // Clean up previous state
+            webcamLoadingIndicator.classList.remove('hidden');
+            webcamErrorDisplay.classList.add('hidden');
+            webcamProcessedFeed.src = "https://placehold.co/640x480/4a5568/a0aec0?text=Starting+Webcam...";
+            webcamCountDisplay.classList.add('hidden'); // Hide count initially
+
+            try {
+                // Request access to the webcam video stream
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+                // Attach the stream to the hidden <video> element
+                webcamVideoFeed.srcObject = webcamStream;
+                webcamVideoFeed.play(); // Start playing the video stream
+
+                // Update UI state
+                startWebcamBtn.disabled = true;
+                stopWebcamBtn.disabled = false;
+                webcamLoadingIndicator.classList.add('hidden');
+                webcamCountDisplay.classList.remove('hidden'); // Show count display area
+
+                // Wait for the video metadata to load so we know its dimensions
+                webcamVideoFeed.onloadedmetadata = () => {
+                     // Set the hidden canvas dimensions to match the video feed
+                     webcamCanvas.width = webcamVideoFeed.videoWidth;
+                     webcamCanvas.height = webcamVideoFeed.videoHeight;
+                    // Start sending frames to the backend at regular intervals
+                     webcamProcessingInterval = setInterval(processWebcamFrame, WEBCAM_INTERVAL_MS);
+                 };
+                 webcamVideoFeed.onerror = (e) => { // Handle potential errors during video playback
+                    throw new Error("Webcam video playback error.");
+                 };
+
+            } catch (err) { // Catch errors during getUserMedia (e.g., permissions denied)
+                console.error("Error accessing webcam:", err);
+                webcamErrorMessage.textContent = `Could not access webcam: ${err.name || err.message}. Please check browser permissions.`;
+                webcamErrorDisplay.classList.remove('hidden');
+                webcamLoadingIndicator.classList.add('hidden');
+                webcamProcessedFeed.src = "https://placehold.co/640x480/ef4444/fee2e2?text=Webcam+Access+Error";
+                startWebcamBtn.disabled = false; // Re-enable start button
+                stopWebcamBtn.disabled = true;
+                webcamCountDisplay.classList.add('hidden');
+            }
+        }
+
+        function stopWebcamFeed() {
+            clearInterval(webcamProcessingInterval); // Stop sending frames
+            webcamProcessingInterval = null;
+
+            // Stop all tracks in the webcam stream
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+
+            // Clear the video element source
+            webcamVideoFeed.srcObject = null;
+
+            // Reset UI elements to 'off' state
+            startWebcamBtn.disabled = false;
+            stopWebcamBtn.disabled = true;
+            webcamProcessedFeed.src = "https://placehold.co/640x480/2d3748/a0aec0?text=Webcam+Off"; // Show 'Off' placeholder
+            webcamCount.textContent = "--";
+            webcamCountDisplay.classList.add('hidden');
+            webcamLoadingIndicator.classList.add('hidden');
+            webcamErrorDisplay.classList.add('hidden'); // Hide any previous error
+        }
+
+        async function processWebcamFrame() {
+            // Check if stream is still active
+            if (!webcamStream || webcamVideoFeed.paused || webcamVideoFeed.ended || !webcamStream.active) {
+                console.log("Webcam stream stopped or inactive, stopping processing.");
+                stopWebcamFeed(); // Ensure clean stop if stream dies unexpectedly
+                return;
+            }
+
+            // Draw the current video frame onto the hidden canvas
+            const context = webcamCanvas.getContext('2d');
+            context.drawImage(webcamVideoFeed, 0, 0, webcamCanvas.width, webcamCanvas.height);
+
+            // Get the frame as a base64 encoded JPEG data URL
+            const imageDataUrl = webcamCanvas.toDataURL('image/jpeg', 0.8); // Use JPEG with quality 0.8 for speed
+
+            try {
+                // Send the frame data to the backend webcam endpoint
+                const response = await fetch(API_ENDPOINT_WEBCAM, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_base64: imageDataUrl }) // Send as JSON
+                });
+
+                 if (!response.ok) { // Handle backend HTTP errors
+                    console.error(`Webcam backend error: ${response.status}`);
+                    webcamCount.textContent = "Error"; // Indicate error on UI
+                    // Optionally add a visual indicator on the image display?
+                    return; // Don't stop the loop for a single failed frame
+                 }
+
+                const data = await response.json(); // Parse response
+
+                 if (data.error) { // Handle backend application errors
+                    console.error(`Webcam backend error: ${data.error}`);
+                    webcamCount.textContent = "Error";
+                    return;
+                }
+
+                // Update the displayed image (<img> tag) with the heatmap overlay from backend
+                webcamProcessedFeed.src = data.heatmap_base64 || webcamVideoFeed.src; // Fallback to raw video if no heatmap
+                // Update the displayed count
+                webcamCount.textContent = data.count !== undefined ? data.count.toFixed(2) : 'Error';
+
+            } catch (error) { // Catch network errors during fetch
+                console.error("Network error sending webcam frame:", error);
+                webcamCount.textContent = "Net Err"; // Indicate network error
+                // Consider adding logic to automatically stop after several consecutive network errors
+            }
+        }
+
+        // --- Attach Event Listeners ---
+        startWebcamBtn.addEventListener('click', startWebcamFeed);
+        stopWebcamBtn.addEventListener('click', stopWebcamFeed);
+
+        // --- Initialize ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setActiveMode('modeBtnImage'); // Set initial mode
+        });
+
+    </script>
+</body>
+</html>
+
