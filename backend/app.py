@@ -302,7 +302,8 @@ def predict_webcam_endpoint():
 
 # --- Run the App ---
 if __name__ == '__main__':
-    # Use 0.0.0.0 for broader accessibility, debug=True for development
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))  # Use Render’s port
+    app.run(host='0.0.0.0', port=port)
 
 
