@@ -11,9 +11,25 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS # Optional: May be needed for local development
 import time # For potential timing or frame processing delays
 import tempfile # For handling uploaded video files
+import requests
 
 # --- Configuration ---
 MODEL_PATH = "new_model_11.keras"
+HF_URL = "https://huggingface.co/thkash18/crowd-count-model/resolve/main/new_model_11.keras"
+def download_model_from_hf(url=HF_URL, save_path=MODEL_PATH):
+    """Download the model from Hugging Face if not already present."""
+    if os.path.exists(save_path):
+        print(f"Model already exists at {save_path}")
+        return
+    print(f"Downloading model from Hugging Face: {url}")
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(save_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    print(f"Model downloaded and saved to {save_path}")
+
 MODEL_INPUT_SIZE = (512, 512)   # Must match model training
 DENSITY_OUTPUT_SIZE = (64, 64)  # Must match model output shape
 # ImageNet Mean/Std for normalization (since VGG base is likely used)
@@ -72,10 +88,10 @@ CORS(app)
 # --- Load Model Globally ---
 model = None
 try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+    download_model_from_hf(HF_URL, MODEL_PATH)
     model = load_model(MODEL_PATH, custom_objects={'CBAMLayer': CBAMLayer}, compile=False)
     print("✅ Keras model loaded successfully!")
+
 except Exception as e:
     print(f"❌ Error loading Keras model: {e}")
     model = None
@@ -288,4 +304,5 @@ def predict_webcam_endpoint():
 if __name__ == '__main__':
     # Use 0.0.0.0 for broader accessibility, debug=True for development
     app.run(host='0.0.0.0', port=5000, debug=True)
+
 
